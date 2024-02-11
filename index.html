@@ -1,80 +1,105 @@
-HTML
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase File Upload and Display Link</title>
+<html>
 
-    <script src="https://www.gstatic.com/firebasejs/9.4.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.4.0/firebase-storage.js"></script>
-    <script>
-        var firebaseConfig = {
-             apiKey: "AIzaSyDsBlWXCR3finD9WDQvWRJCU4xtrklvQnA",
+<head>
+	<title>Testing file upload</title>
+</head>
+
+<body>
+
+	<progress value="0" max="100" id="uploader">0%</progress>
+	<input type="file" value="upload" accept=".jpg" id="fileButton"> // This example uses the CDN, in a production setting you'd likely want to use the npm package
+	<script src="https://www.gstatic.com/firebasejs/4.2.0/firebase.js"></script>
+	<script>
+
+		//BE SURE TO PROTECT EVERYTHING IN THE CONFIG
+		//DON'T COMMIT IT!!!
+
+		// Initialize Firebase
+		var config = {
+			apiKey: "AIzaSyDsBlWXCR3finD9WDQvWRJCU4xtrklvQnA",
     authDomain: "ipfs-2afd0.firebaseapp.com",
     projectId: "ipfs-2afd0",
     storageBucket: "ipfs-2afd0.appspot.com",
     messagingSenderId: "992481613240",
-    appId: "1:992481613240:web:f01fea4ea49fb3e5cf2b4d"// Replace with your Firebase project configuration
-        };
-        firebase.initializeApp(firebaseConfig);
-        const storage = firebase.storage();
-    </script>
-</head>
-<body>
-    <h1>File Upload and Display Link</h1>
+    appId: "1:992481613240:web:f01fea4ea49fb3e5cf2b4d"
+		};
+		firebase.initializeApp(config);
+	</script>
 
-    <input type="file" id="fileInput" multiple>
-    <button id="uploadButton">Upload File(s)</button>
-    <div id="uploadStatus"></div>
-    <br>
-    <ul id="uploadedLinks"></ul>
+	<script type="text/javascript">
 
-    <script>
-        const fileInput = document.getElementById('fileInput');
-        const uploadButton = document.getElementById('uploadButton');
-        const uploadStatus = document.getElementById('uploadStatus');
-        const uploadedLinks = document.getElementById('uploadedLinks');
+		// firebase bucket name
+		// REPLACE WITH THE ONE YOU CREATE
+		// ALSO CHECK STORAGE RULES IN FIREBASE CONSOLE
+		var fbBucketName = 'images';
 
-        uploadButton.addEventListener('click', () => {
-            uploadStatus.textContent = '';
-            uploadedLinks.innerHTML = ''; // Clear previous links
+		// get elements
+		var uploader = document.getElementById('uploader');
+		var fileButton = document.getElementById('fileButton');
 
-            const files = fileInput.files;
-            if (!files.length) {
-                return;
-            }
+		// listen for file selection
+		fileButton.addEventListener('change', function (e) {
 
-            for (const file of files) {
-                const filename = file.name;
+			// what happened
+			console.log('file upload event', e);
 
-                // Create a reference to the file location in Firebase Storage
-                const storageRef = storage.ref(`uploads/${filename}`);
+			// get file
+			var file = e.target.files[0];
 
-                // Upload the file
-                const uploadTask = storageRef.put(file);
+			// create a storage ref
+			var storageRef = firebase.storage().ref(`${fbBucketName}/${file.name}`);
 
-                // Update upload progress
-                uploadTask.on('state_changed',
-                    (snapshot) => {
-                        // Get task progress, including the number of bytes uploaded
-                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                        uploadStatus.textContent = `Uploading ${filename}: ${progress.toFixed(2)}%`;
-                    },
-                    (error) => {
-                        uploadStatus.textContent = `Error uploading ${filename}: ${error.message}`;
-                    },
-                    () => {
-                        // Get the download URL after successful upload
-                        storageRef.getDownloadURL().then((url) => {
-                            const link = document.createElement('li');
-                            link.textContent = `- ${filename}: ${url}`;
-                            uploadedLinks.appendChild(link);
-                        });
-                    }
-                );
-            }
-        });
-    </script>
+			// upload file
+			var uploadTask = storageRef.put(file);
+
+			// The part below is largely copy-pasted from the 'Full Example' section from
+			// https://firebase.google.com/docs/storage/web/upload-files
+
+			// update progress bar
+			uploadTask.on(firebase.storage.TaskEvent.STATE_CHANGED, // or 'state_changed'
+				function (snapshot) {
+					// Get task progress, including the number of bytes uploaded and the total number of bytes to be uploaded
+					var progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+					uploader.value = progress;
+					console.log('Upload is ' + progress + '% done');
+					switch (snapshot.state) {
+						case firebase.storage.TaskState.PAUSED: // or 'paused'
+							console.log('Upload is paused');
+							break;
+						case firebase.storage.TaskState.RUNNING: // or 'running'
+							console.log('Upload is running');
+							break;
+					}
+				}, function (error) {
+
+					// A full list of error codes is available at
+					// https://firebase.google.com/docs/storage/web/handle-errors
+					switch (error.code) {
+						case 'storage/unauthorized':
+							// User doesn't have permission to access the object
+							break;
+
+						case 'storage/canceled':
+							// User canceled the upload
+							break;
+
+						case 'storage/unknown':
+							// Unknown error occurred, inspect error.serverResponse
+							break;
+					}
+				}, function () {
+					// Upload completed successfully, now we can get the download URL
+					// save this link somewhere, e.g. put it in an input field
+					var downloadURL = uploadTask.snapshot.downloadURL;
+					console.log('downloadURL', downloadURL);
+				});
+
+		});
+
+
+	</script>
+
 </body>
+
 </html>
