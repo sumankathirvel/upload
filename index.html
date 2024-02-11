@@ -1,0 +1,80 @@
+HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase File Upload and Display Link</title>
+
+    <script src="https://www.gstatic.com/firebasejs/9.4.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.4.0/firebase-storage.js"></script>
+    <script>
+        var firebaseConfig = {
+             apiKey: "AIzaSyDsBlWXCR3finD9WDQvWRJCU4xtrklvQnA",
+    authDomain: "ipfs-2afd0.firebaseapp.com",
+    projectId: "ipfs-2afd0",
+    storageBucket: "ipfs-2afd0.appspot.com",
+    messagingSenderId: "992481613240",
+    appId: "1:992481613240:web:f01fea4ea49fb3e5cf2b4d"// Replace with your Firebase project configuration
+        };
+        firebase.initializeApp(firebaseConfig);
+        const storage = firebase.storage();
+    </script>
+</head>
+<body>
+    <h1>File Upload and Display Link</h1>
+
+    <input type="file" id="fileInput" multiple>
+    <button id="uploadButton">Upload File(s)</button>
+    <div id="uploadStatus"></div>
+    <br>
+    <ul id="uploadedLinks"></ul>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadButton = document.getElementById('uploadButton');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const uploadedLinks = document.getElementById('uploadedLinks');
+
+        uploadButton.addEventListener('click', () => {
+            uploadStatus.textContent = '';
+            uploadedLinks.innerHTML = ''; // Clear previous links
+
+            const files = fileInput.files;
+            if (!files.length) {
+                return;
+            }
+
+            for (const file of files) {
+                const filename = file.name;
+
+                // Create a reference to the file location in Firebase Storage
+                const storageRef = storage.ref(`uploads/${filename}`);
+
+                // Upload the file
+                const uploadTask = storageRef.put(file);
+
+                // Update upload progress
+                uploadTask.on('state_changed',
+                    (snapshot) => {
+                        // Get task progress, including the number of bytes uploaded
+                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        uploadStatus.textContent = `Uploading ${filename}: ${progress.toFixed(2)}%`;
+                    },
+                    (error) => {
+                        uploadStatus.textContent = `Error uploading ${filename}: ${error.message}`;
+                    },
+                    () => {
+                        // Get the download URL after successful upload
+                        storageRef.getDownloadURL().then((url) => {
+                            const link = document.createElement('li');
+                            link.textContent = `- ${filename}: ${url}`;
+                            uploadedLinks.appendChild(link);
+                        });
+                    }
+                );
+            }
+        });
+    </script>
+</body>
+</html>
